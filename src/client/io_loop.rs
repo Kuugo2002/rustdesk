@@ -101,6 +101,7 @@ pub struct Remote<T: InvokeUiSession> {
 #[derive(Default)]
 struct ParsedPeerInfo {
     platform: String,
+    is_wayland: bool,
     is_installed: bool,
     idd_impl: String,
     support_view_camera: bool,
@@ -1244,9 +1245,10 @@ impl<T: InvokeUiSession> Remote<T> {
         });
         let custom_fps = self.handler.lc.read().unwrap().custom_fps.clone();
         let custom_fps = custom_fps.lock().unwrap().clone();
-        let mut custom_fps = custom_fps.unwrap_or(30);
+        let default_fps = if self.peer_info.is_wayland { 60 } else { 30 };
+        let mut custom_fps = custom_fps.unwrap_or(default_fps);
         if custom_fps < 5 || custom_fps > 120 {
-            custom_fps = 30;
+            custom_fps = default_fps;
         }
         let inactive_threshold = 15;
         let max_queue_len = self
@@ -2211,6 +2213,10 @@ impl<T: InvokeUiSession> Remote<T> {
                 .map(|v| v.as_bool())
                 .flatten()
                 .unwrap_or(false);
+            self.peer_info.is_wayland = platform_additions
+                .get("is_wayland")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             self.peer_info.idd_impl = platform_additions
                 .get("idd_impl")
                 .map(|v| v.as_str())
@@ -2222,6 +2228,10 @@ impl<T: InvokeUiSession> Remote<T> {
                 .map(|v| v.as_bool())
                 .flatten()
                 .unwrap_or(false);
+        }
+        if self.peer_info.is_wayland {
+            let msg = self.handler.lc.write().unwrap().set_custom_fps(60, false);
+            self.sender.send(Data::Message(msg)).ok();
         }
     }
 

@@ -1827,7 +1827,10 @@ void showConfirmSwitchSidesDialog(
 
 customImageQualityDialog(SessionID sessionId, String id, FFI ffi) async {
   double initQuality = kDefaultQuality;
-  double initFps = kDefaultFps;
+  final defaultFps = ffi.ffiModel.pi.isWayland
+      ? kWaylandDefaultFps
+      : kDefaultFps;
+  double initFps = defaultFps;
   bool qualitySet = false;
   bool fpsSet = false;
 
@@ -1836,7 +1839,9 @@ customImageQualityDialog(SessionID sessionId, String id, FFI ffi) async {
     direct =
         ConnectionTypeState.find(id).direct.value == ConnectionType.strDirect;
   } catch (_) {}
-  bool hideFps = (await bind.mainIsUsingPublicServer() && direct != true) ||
+  bool hideFps = (await bind.mainIsUsingPublicServer() &&
+          direct != true &&
+          !ffi.ffiModel.pi.isWayland) ||
       versionCmp(ffi.ffiModel.pi.version, '1.2.0') < 0;
   bool hideMoreQuality =
       (await bind.mainIsUsingPublicServer() && direct != true) ||
@@ -1883,10 +1888,10 @@ customImageQualityDialog(SessionID sessionId, String id, FFI ffi) async {
   final fpsOption =
       await bind.sessionGetOption(sessionId: sessionId, arg: 'custom-fps');
   initFps = fpsOption == null
-      ? kDefaultFps
-      : double.tryParse(fpsOption) ?? kDefaultFps;
+      ? defaultFps
+      : double.tryParse(fpsOption) ?? defaultFps;
   if (initFps < kMinFps || initFps > kMaxFps) {
-    initFps = kDefaultFps;
+    initFps = defaultFps;
   }
 
   final content = customImageQualityWidget(

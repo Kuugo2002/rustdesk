@@ -53,6 +53,16 @@ pub const MIN_FPS: u32 = 1;
 pub const MAX_FPS: u32 = 120;
 pub const INIT_FPS: u32 = 15;
 const MIN_AUTO_FPS: u32 = 5;
+#[cfg(all(target_os = "linux", not(test)))]
+const WAYLAND_FPS: u32 = 60;
+
+fn default_fps() -> u32 {
+    #[cfg(all(target_os = "linux", not(test)))]
+    if crate::platform::current_is_wayland() {
+        return WAYLAND_FPS;
+    }
+    FPS
+}
 
 // Bitrate ratio constants for different quality levels
 const BR_MAX: f32 = 40.0; // 2000 * 2 / 100
@@ -271,7 +281,7 @@ struct UserData {
 impl UserData {
     // The frame rate this viewer asked for, from its custom or auto-adjust limit.
     fn fps_cap(&self) -> u32 {
-        let mut fps = self.custom_fps.unwrap_or(FPS);
+        let mut fps = self.custom_fps.unwrap_or_else(default_fps);
         if let Some(auto_adjust_fps) = self.auto_adjust_fps {
             if fps == 0 || auto_adjust_fps < fps {
                 fps = auto_adjust_fps;
@@ -304,7 +314,7 @@ pub struct VideoQoS {
 impl Default for VideoQoS {
     fn default() -> Self {
         VideoQoS {
-            fps: FPS,
+            fps: default_fps(),
             ratio: BR_BALANCED,
             users: Default::default(),
             displays: Default::default(),
@@ -351,7 +361,7 @@ impl VideoQoS {
         if fps >= MIN_FPS && fps <= MAX_FPS {
             fps
         } else {
-            FPS
+            default_fps()
         }
     }
 
@@ -669,7 +679,7 @@ impl VideoQoS {
             .values()
             .map(|u| u.fps_cap())
             .min()
-            .unwrap_or(FPS)
+            .unwrap_or_else(default_fps)
             .clamp(MIN_FPS, MAX_FPS)
     }
 
