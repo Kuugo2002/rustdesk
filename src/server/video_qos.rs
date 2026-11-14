@@ -345,6 +345,11 @@ impl VideoQoS {
         Duration::from_secs_f32(1. / (self.fps() as f32))
     }
 
+    #[cfg(windows)]
+    pub(crate) fn fixed_60_fps(&self) -> bool {
+        !self.users.is_empty() && self.users.values().all(|user| user.custom_fps == Some(60))
+    }
+
     // Get current FPS within valid range
     pub fn fps(&self) -> u32 {
         let fps = self.fps;
@@ -885,6 +890,21 @@ impl RttCalculator {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn fixed_60_fps_requires_every_viewer_to_select_60() {
+        let mut qos = VideoQoS::default();
+        assert!(!qos.fixed_60_fps());
+        qos.users.insert(1, UserData::default());
+        qos.user_custom_fps(1, 60);
+        assert!(qos.fixed_60_fps());
+        qos.users.insert(2, UserData::default());
+        qos.user_custom_fps(2, 30);
+        assert!(!qos.fixed_60_fps());
+        qos.user_custom_fps(2, 60);
+        assert!(qos.fixed_60_fps());
+    }
 
     fn stable_qos() -> VideoQoS {
         let mut qos = VideoQoS::default();

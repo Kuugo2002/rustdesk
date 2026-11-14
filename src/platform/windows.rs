@@ -97,6 +97,7 @@ use windows_service::{
 use winreg::{enums::*, RegKey};
 
 mod acl;
+pub(crate) mod fixed_fps;
 mod installer_handoff;
 mod installer_shell;
 mod msi_registry;

@@ -629,6 +629,10 @@ fn run(vs: VideoService) -> ResultType<()> {
     let sp = vs.sp;
     let mut c = get_capturer(vs.source, display_idx, last_portable_service_running)?;
     #[cfg(windows)]
+    if vs.source.is_monitor() {
+        c.capturer = Box::new(crate::platform::windows::fixed_fps::Capturer::new(c.capturer));
+    }
+    #[cfg(windows)]
     // ACCESS_LOST marks the next successful capturer creation as a recovery. This timestamp is
     // consumed once and temporarily holds off the normal WouldBlock-to-GDI fallback, giving the
     // replacement DXGI capturer time to produce its first frame. Normal startup is unaffected.
@@ -743,6 +747,10 @@ fn run(vs: VideoService) -> ResultType<()> {
             &mut second_instant,
             &sp.name(),
         )?;
+        #[cfg(windows)]
+        if vs.source.is_monitor() && VIDEO_QOS.lock().unwrap().fixed_60_fps() {
+            spf = Duration::from_secs_f64(1.0 / 60.0);
+        }
         if sp.is_option_true(OPTION_REFRESH) {
             if vs.source.is_monitor() {
                 let _ = try_broadcast_display_changed(&sp, display_idx, &c, true);
